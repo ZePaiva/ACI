@@ -42,8 +42,8 @@ while:
 	
 	# check if it is a number
 if:	
-	ble char, 0x2f, endif
-	bge char, 0x3a, endif
+	blt char, 0x2f, endif
+	bgt char, 0x3a, endif
 	addi num, num, 1
 	
 endif:
