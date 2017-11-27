@@ -29,6 +29,5 @@ architecture Behavioral of InstructionMemory is
 
 begin
 	instruction  <= s_memory(to_integer(unsigned(address(5 downto 2))));
-	DU_IMaddr	 <= address;
 	DU_IMdata    <= s_memory(to_integer(unsigned(DU_IMaddr)));
 end Behavioral;

@@ -7,7 +7,7 @@ use work.DisplayUnit_pkg.all;
 
 entity mips_single_cycle is
 	port(CLOCK_50 :  in std_logic;
-		  SW		  :  in std_logic_vector(2 downto 0);
+		  SW		  :  in std_logic_vector(7 downto 0);
 		  KEY		  :  in std_logic_vector(3 downto 0);
 		  HEX0	  : out std_logic_vector(6 downto 0);
 		  HEX1	  : out std_logic_vector(6 downto 0);
@@ -20,10 +20,26 @@ entity mips_single_cycle is
 end mips_single_cycle;
 
 architecture Structural of mips_single_cycle is
-	
+	-- secondary clock
 	signal s_clk : std_logic;
+	
+	-- jump address
 	signal s_jaddr : std_logic_vector(25 downto 0);
+	
+	-- instructions and offsets
 	signal s_instruct_addr, s_instruct, s_offset : std_logic_vector(31 downto 0);
+	
+	--	signals for registers in register file
+	signal regs1, regs2, wReg, regd : std_logic_vector(4 downto 0);
+	
+	-- signals for data in register file
+	signal r_data1, r_data2, w_data : std_logic_vector(31 downto 0);
+	
+	-- signals for ALU
+	signal alu_e2, result	: std_logic_vector(31 downto 0);
+	signal alu_funct	: std_logic_vector(5 downto 0);
+	signal alu_control	: std_logic_vector(2 downto 0);
+	signal zero : std_logic;
 	
 begin
 
@@ -75,11 +91,54 @@ begin
 		entity work.InstrSplitter(Behavioral)
 			port map(instruction => s_instruct,
 						imm			=> s_offset(15 downto 0),
-						jaddr			=> s_jaddr);
+						jaddr			=> s_jaddr,
+						reg1			=> regd,
+						reg2			=> regs1,
+						reg3			=> regs2,
+						funct			=> alu_funct);
 						
 	extender : 
 		entity work.SignExtend(Behavioral)
 			port map(dataIn 		=> s_offset(15 downto 0),
 						dataOut 		=> s_offset);
-	
+						
+	m1 :
+		entity work.Mux2N(Behavioral)
+			generic map(BITS 		=> 5)
+			port map(entry1		=> regs1,
+						entry2		=> regs2,
+						selector		=> SW(6),
+						outData		=> wReg);
+	register_file :
+		entity work.RegFile(Behavioral)
+			port map(clk			=> s_clk,
+						writeEnable => SW(7),
+						readReg1		=> regs1,
+						readReg2		=> regs2,
+						readData1	=> r_data1,
+						readData2	=> r_data2,
+						writeData	=> w_data,
+						writeReg		=> wReg);
+						
+	m2	:
+		entity work.Mux2N(Behavioral)
+			generic map(BITS		=> 32)
+			port map(entry1		=> r_data2,
+						entry2		=> s_offset,
+						selector		=> SW(5),
+						outData		=> alu_e2);
+						
+	alu_32:
+		entity work.ALU32(Behavioral)
+			port map(data1			=> r_data1,
+						data2			=> alu_e2,
+						aluControl 	=> alu_control,
+						zero			=> zero,
+						result		=> DU_DMdata);
+						
+	alu_control_unit:
+		entity work.ALUControlUnit(Behavioral)
+			port map(ALUop			=> SW(4 downto 3),
+						funct			=> alu_funct,
+						ALUControl	=> alu_control);
 end Structural;
